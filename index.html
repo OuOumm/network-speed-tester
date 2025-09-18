@@ -1,0 +1,228 @@
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流量测试工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://gcore.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script type="module" src="js/app.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-smooth {
+                transition: all 0.3s ease;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .float-animation {
+                animation: float 3s ease-in-out infinite;
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+                100% { transform: translateY(0px); }
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-primary mb-2 float-animation">流量测试工具</h1>
+            <p class="text-gray-600">多线程下载测试，精确控制目标流量</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fa fa-cogs text-primary mr-2"></i>测试设置
+                        </h2>
+                        <button id="helpBtn"
+                            class="text-primary hover:text-primary/80 text-sm py-1 px-2 transition-smooth flex items-center">
+                            <i class="fa fa-question-circle mr-1"></i>使用帮助
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1 flex justify-between items-center">选择测试节点
+                                <span id="nodeLatency"
+                                    class="px-1 py-1 bg-gray-100 rounded-md text-sm">--ms</span></label>
+                            <select id="speedNode"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-smooth">
+                                <option value="">-- 请选择节点 --</option>
+                            </select>
+                        </div>
+
+                        <div id="customNodeContainer" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">自定义节点URL</label>
+                            <input type="url" id="customNodeUrl" placeholder="https://example.com/large-file.bin"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-smooth">
+                        </div>
+
+                        <hr class="my-2">
+
+                        <!-- IP信息部分 -->
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">IP信息</h3>
+                            <div class="space-y-2">
+                                <div>
+                                    <p class="text-xs text-gray-500">国内IP</p>
+                                    <p id="domesticIP"
+                                        class="font-medium cursor-pointer hover:text-primary transition-smooth">获取中...
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">国外IP</p>
+                                    <p id="foreignIP"
+                                        class="font-medium cursor-pointer hover:text-primary transition-smooth">获取中...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">线程数量</label>
+                            <input type="number" id="threadCount" value="4" min="1" max="16"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-smooth">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">目标流量</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" id="trafficLimit" value="100" min="1"
+                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-smooth">
+                                <select id="trafficUnit"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-smooth">
+                                    <option value="MB" selected="">MB</option>
+                                    <option value="GB">GB</option>
+                                    <option value="TB">TB</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3 pt-2">
+                            <button id="startBtn"
+                                class="flex-1 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition-smooth flex items-center justify-center">
+                                <i class="fa fa-play mr-2"></i>开始测试
+                            </button>
+                            <button id="stopBtn"
+                                class="flex-1 bg-danger hover:bg-danger/90 text-white py-2 px-4 rounded-lg transition-smooth flex items-center justify-center"
+                                disabled="">
+                                <i class="fa fa-stop mr-2"></i>停止测试
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 统计和日志 -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fa fa-bar-chart text-primary mr-2"></i>测试统计
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-500 mb-1">下载速度</p>
+                            <p class="text-2xl font-bold">
+                                <span id="downloadSpeed">0.00</span>
+                            </p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-500 mb-1">已用流量</p>
+                            <p class="text-2xl font-bold">
+                                <span id="trafficUsed">0.00</span>
+                            </p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-500 mb-1">完成进度</p>
+                            <p class="text-2xl font-bold">
+                                <span id="progress">0.0</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="progressBar" class="bg-primary h-3 rounded-full transition-smooth" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fa fa-list-alt text-primary mr-2"></i>测试日志
+                        </h2>
+                        <button id="clearLog" class="text-sm text-gray-500 hover:text-danger transition-smooth">
+                            <i class="fa fa-trash mr-1"></i>清空日志
+                        </button>
+                    </div>
+
+                    <div id="testLog" class="bg-gray-50 rounded-lg h-64 p-3 overflow-y-auto text-sm"></div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 opacity-0 transition-opacity duration-300">
+        <div id="helpModalContent" class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">使用帮助</h3>
+                <button id="closeHelp" class="text-gray-500 hover:text-gray-700 transition-smooth">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="text-sm text-gray-600 space-y-3">
+                <p><strong>1. 选择测试节点：</strong>从预设节点中选择，或使用自定义URL</p>
+                <p><strong>2. 设置线程数量：</strong>建议4-8个线程，过多可能影响性能</p>
+                <p><strong>3. 设置目标流量：</strong>达到设定流量后自动停止测试</p>
+                <p><strong>4. 开始测试：</strong>点击开始按钮，实时查看下载速度和流量统计</p>
+                <p><strong>5. 停止测试：</strong>可随时手动停止，或等待达到目标流量自动停止</p>
+                <p><strong>注意事项：</strong></p>
+                <ul class="list-disc list-inside ml-2 space-y-1">
+                    <li>测试会消耗网络流量，请谨慎设置目标流量</li>
+                    <li>自定义节点URL需支持跨域访问</li>
+                    <li>IP信息仅供参考，实际IP可能因网络环境变化</li>
+                    <li>线程数量并非越多越好，过多可能导致速度下降</li>
+                    <li>达到设定的目标流量后，测试会自动停止</li>
+                    <li>自定义节点需提供可公开访问的大文件URL</li>
+                    <li>可能会对测试节点的服务器造成一定压力，请谨慎使用</li>
+                    <li>测速可能超出目标流量，因为会有一些额外的流量消耗</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
