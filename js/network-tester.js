@@ -4,6 +4,8 @@
  * @description 多线程网络流量测试工具，支持实时速度监控和流量控制
  */
 
+import ScreenWakeLock from './screen-wake-lock.js';
+
 /**
  * 测试节点配置
  * @typedef {Object} TestNode
@@ -96,17 +98,64 @@ class NetworkTester {
         /** @type {number|null} 更新定时器ID */
         this.updateTimer = null;
 
+        /** @type {ScreenWakeLock} 屏幕常亮管理器 */
+        this.screenWakeLock = new ScreenWakeLock();
+
+        // 设置日志回调，让ScreenWakeLock使用NetworkTester的日志系统
+        this.screenWakeLock.setLogCallback((message) => {
+            this.log(message);
+        });
+
+        // 启用后台运行支持
+        this.screenWakeLock.setBackgroundSupport(true);
+        this.screenWakeLock.setHeartbeatInterval(20000); // 20秒心跳间隔
+
         this.init();
+    }
+
+    /**
+     * 初始化屏幕常亮功能
+     * @private
+     */
+    initScreenWakeLock() {
+        // 设置状态变化回调
+        this.screenWakeLock.setStatusChangeCallback((status, data) => {
+            switch (status) {
+                case 'acquired':
+                    this.log('[屏幕常亮] 屏幕唤醒锁已激活');
+                    break;
+                case 'released':
+                    this.log('[屏幕常亮] 屏幕唤醒锁已释放');
+                    break;
+                case 'failed':
+                    this.log('[屏幕常亮] 屏幕唤醒锁获取失败');
+                    break;
+                case 'unsupported':
+                    this.log('[屏幕常亮] 当前浏览器不支持屏幕唤醒锁功能');
+                    break;
+                case 'error':
+                    this.log(`[屏幕常亮] 发生错误: ${data?.message || '未知错误'}`);
+                    break;
+            }
+        });
     }
 
     /**
      * 初始化测试器
      */
-    init() {
-        this.bindElements();
-        this.populateTestNodes();
-        this.fetchIPInfo();
-        this.bindEvents();
+    async init() {
+        try {
+            // 首先绑定DOM元素
+            this.bindElements();
+            
+            await this.fetchIPInfo();
+            this.populateTestNodes();
+            this.bindEvents();
+            this.initScreenWakeLock(); // 初始化屏幕常亮功能
+            this.log('[信息] 网络测试器初始化完成');
+        } catch (error) {
+            this.log(`[错误] 初始化失败: ${error.message}`);
+        }
     }
 
     /**
@@ -319,6 +368,9 @@ class NetworkTester {
         // 更新UI状态
         this.updateUIState(true);
 
+        // 激活屏幕常亮功能
+        await this.screenWakeLock.acquire();
+
         // 记录开始日志
         this.log(`[信息] 开始测试，节点: ${this.getSelectedNodeName()}, 线程: ${threadCount}, 目标流量: ${trafficLimit}${trafficUnit}`);
 
@@ -522,7 +574,7 @@ class NetworkTester {
     /**
      * 停止测试
      */
-    stopTest() {
+    async stopTest() {
         if (!this.isTesting) return;
 
         // 标记测试为停止
@@ -553,6 +605,9 @@ class NetworkTester {
 
         // 重置UI状态
         this.updateUIState(false);
+
+        // 释放屏幕常亮功能
+        await this.screenWakeLock.release();
     }
 
     /**
@@ -565,8 +620,22 @@ class NetworkTester {
         logEntry.className = 'mb-1 border-b border-gray-100 pb-1 last:border-0 last:mb-0 last:pb-0';
         logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
 
-        this.elements.testLogElement.appendChild(logEntry);
-        this.elements.testLogElement.scrollTop = this.elements.testLogElement.scrollHeight;
+        // 安全检查：确保元素已绑定
+        if (this.elements && this.elements.testLogElement) {
+            this.elements.testLogElement.appendChild(logEntry);
+            this.elements.testLogElement.scrollTop = this.elements.testLogElement.scrollHeight;
+        } else {
+            // 如果元素还未绑定，延迟执行或输出到控制台
+            console.log(`[NetworkTester] ${message}`);
+            
+            // 延迟添加到DOM（如果元素稍后可用）
+            setTimeout(() => {
+                if (this.elements && this.elements.testLogElement) {
+                    this.elements.testLogElement.appendChild(logEntry);
+                    this.elements.testLogElement.scrollTop = this.elements.testLogElement.scrollHeight;
+                }
+            }, 1000);
+        }
     }
 
     /**
@@ -706,12 +775,14 @@ class NetworkTester {
     destroy() {
         this.stopTest();
         // 清理事件监听器
-        Object.keys(this.elements).forEach(key => {
-            const element = this.elements[key];
-            if (element && element.cloneNode) {
-                element.replaceWith(element.cloneNode(true));
-            }
-        });
+        if (this.elements && typeof this.elements === 'object') {
+            Object.keys(this.elements).forEach(key => {
+                const element = this.elements[key];
+                if (element && element.cloneNode) {
+                    element.replaceWith(element.cloneNode(true));
+                }
+            });
+        }
     }
 }
 

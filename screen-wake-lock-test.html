@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏幕常亮功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.supported {
+            background-color: #e8f5e8;
+            color: #2d7d2d;
+            border: 1px solid #2d7d2d;
+        }
+        .status.unsupported {
+            background-color: #ffeaea;
+            color: #d42c2c;
+            border: 1px solid #d42c2c;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-primary:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-entry:last-child {
+            margin-bottom: 0;
+        }
+        .info {
+            color: #17a2b8;
+        }
+        .success {
+            color: #28a745;
+        }
+        .warning {
+            color: #ffc107;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .feature-info {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .feature-info h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        .feature-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .feature-info li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 屏幕常亮功能测试</h1>
+        
+        <div id="supportStatus" class="status"></div>
+        
+        <div class="feature-info">
+            <h3>📱 功能说明</h3>
+            <p>此测试演示了防止移动设备屏幕自动熄灭的功能，支持后台运行状态。</p>
+            <ul>
+                <li>✅ 自动检测浏览器支持情况</li>
+                <li>✅ 支持页面可见性变化时的自动重试</li>
+                <li>✅ 支持后台运行状态的心跳机制</li>
+                <li>✅ 智能重试和错误处理</li>
+                <li>✅ 实时状态监控和日志记录</li>
+            </ul>
+        </div>
+        
+        <div class="controls">
+            <button id="acquireBtn" class="btn-primary">激活屏幕常亮</button>
+            <button id="releaseBtn" class="btn-secondary" disabled>释放屏幕常亮</button>
+            <button id="toggleBackgroundBtn" class="btn-secondary">切换后台支持</button>
+            <button id="clearLogBtn" class="btn-secondary">清空日志</button>
+        </div>
+        
+        <div id="currentStatus" style="margin: 20px 0; font-weight: 500;"></div>
+        
+        <div id="logContainer" class="log">
+            <div class="log-entry info">等待开始测试...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import ScreenWakeLock from './js/screen-wake-lock.js';
+
+        class ScreenWakeLockTest {
+            constructor() {
+                this.screenWakeLock = new ScreenWakeLock();
+                this.backgroundSupport = true;
+                this.init();
+            }
+
+            init() {
+                this.setupUI();
+                this.setupEventListeners();
+                this.updateSupportStatus();
+                this.setupWakeLockCallbacks();
+            }
+
+            setupUI() {
+                this.elements = {
+                    supportStatus: document.getElementById('supportStatus'),
+                    acquireBtn: document.getElementById('acquireBtn'),
+                    releaseBtn: document.getElementById('releaseBtn'),
+                    toggleBackgroundBtn: document.getElementById('toggleBackgroundBtn'),
+                    clearLogBtn: document.getElementById('clearLogBtn'),
+                    currentStatus: document.getElementById('currentStatus'),
+                    logContainer: document.getElementById('logContainer')
+                };
+            }
+
+            setupEventListeners() {
+                this.elements.acquireBtn.addEventListener('click', () => this.acquireWakeLock());
+                this.elements.releaseBtn.addEventListener('click', () => this.releaseWakeLock());
+                this.elements.toggleBackgroundBtn.addEventListener('click', () => this.toggleBackgroundSupport());
+                this.elements.clearLogBtn.addEventListener('click', () => this.clearLog());
+            }
+
+            setupWakeLockCallbacks() {
+                this.screenWakeLock.setStatusChangeCallback((status, data) => {
+                    this.log(`状态变化: ${status}`, this.getStatusColor(status));
+                    this.updateCurrentStatus();
+                });
+            }
+
+            getStatusColor(status) {
+                const colors = {
+                    'acquired': 'success',
+                    'released': 'info',
+                    'failed': 'error',
+                    'unsupported': 'warning',
+                    'error': 'error'
+                };
+                return colors[status] || 'info';
+            }
+
+            updateSupportStatus() {
+                const status = this.screenWakeLock.getStatus();
+                const supportStatus = this.elements.supportStatus;
+                
+                if (status.isSupported) {
+                    supportStatus.className = 'status supported';
+                    supportStatus.innerHTML = '✅ 您的浏览器支持屏幕唤醒锁API';
+                } else {
+                    supportStatus.className = 'status unsupported';
+                    supportStatus.innerHTML = '❌ 您的浏览器不支持屏幕唤醒锁API，将使用备用方案';
+                }
+            }
+
+            updateCurrentStatus() {
+                const status = this.screenWakeLock.getStatus();
+                const currentStatus = this.elements.currentStatus;
+                
+                let statusText = `当前状态: ${status.isActive ? '激活' : '未激活'}`;
+                statusText += ` | 唤醒锁: ${status.hasWakeLock ? '持有' : '未持有'}`;
+                statusText += ` | 后台支持: ${this.backgroundSupport ? '启用' : '禁用'}`;
+                statusText += ` | 重试次数: ${status.retryCount}/${status.maxRetries}`;
+                
+                currentStatus.innerHTML = statusText;
+            }
+
+            async acquireWakeLock() {
+                this.log('正在激活屏幕常亮功能...', 'info');
+                this.elements.acquireBtn.disabled = true;
+                
+                try {
+                    const success = await this.screenWakeLock.acquire();
+                    
+                    if (success) {
+                        this.log('屏幕常亮功能激活成功！', 'success');
+                        this.elements.releaseBtn.disabled = false;
+                    } else {
+                        this.log('屏幕常亮功能激活失败', 'error');
+                        this.elements.acquireBtn.disabled = false;
+                    }
+                } catch (error) {
+                    this.log(`激活失败: ${error.message}`, 'error');
+                    this.elements.acquireBtn.disabled = false;
+                }
+                
+                this.updateCurrentStatus();
+            }
+
+            async releaseWakeLock() {
+                this.log('正在释放屏幕常亮功能...', 'info');
+                this.elements.releaseBtn.disabled = true;
+                
+                try {
+                    await this.screenWakeLock.release();
+                    this.log('屏幕常亮功能已释放', 'info');
+                    this.elements.acquireBtn.disabled = false;
+                } catch (error) {
+                    this.log(`释放失败: ${error.message}`, 'error');
+                    this.elements.releaseBtn.disabled = false;
+                }
+                
+                this.updateCurrentStatus();
+            }
+
+            toggleBackgroundSupport() {
+                this.backgroundSupport = !this.backgroundSupport;
+                this.screenWakeLock.setBackgroundSupport(this.backgroundSupport);
+                this.log(`后台运行支持已${this.backgroundSupport ? '启用' : '禁用'}`, 'info');
+                this.updateCurrentStatus();
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.innerHTML = `[${timestamp}] ${message}`;
+                
+                this.elements.logContainer.appendChild(logEntry);
+                this.elements.logContainer.scrollTop = this.elements.logContainer.scrollHeight;
+            }
+
+            clearLog() {
+                this.elements.logContainer.innerHTML = '<div class="log-entry info">日志已清空</div>';
+            }
+        }
+
+        // 启动测试
+        document.addEventListener('DOMContentLoaded', () => {
+            new ScreenWakeLockTest();
+        });
+    </script>
+</body>
+</html>
