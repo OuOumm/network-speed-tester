@@ -35,7 +35,7 @@ function initializeApp() {
             }
         });
         
-        tester.log('[信息] 初始化网络测试工具成功[版本：1.0.0]，等待开始测试...');
+        tester.log('[信息] 初始化网络测试工具成功[版本：2.0.0]，等待开始测试...');
     } catch (error) {
         tester.log('[错误] 初始化网络测试工具失败:', error);
         alert('初始化失败: ' + error.message);
