@@ -310,7 +310,8 @@ class NetworkTester {
                 this.log('[错误] 请输入自定义节点URL');
                 return null;
             }
-            if (!testUrl.startsWith('http')) {
+            const urlPattern = /^https?:\/\/[^\s/$.?#].[^\s]*$/;
+            if (!urlPattern.test(testUrl)) {
                 this.log('[错误] 请输入正确的URL格式 (如: https://example.com)');
                 return null;
             }
@@ -599,6 +600,7 @@ class NetworkTester {
         const totalTime = (Date.now() - this.startTime) / 1000; // 秒
         const avgSpeed = totalTime > 0 ? (this.totalDownloaded / totalTime) / (1024 * 1024) : 0;
 
+        // 确保进度UI更新到最终状态
         this.updateProgressUI((this.totalDownloaded / totalTime));
 
         this.log(`[信息] 测试已停止，总耗时: ${this.formatTime(totalTime)}, 平均速度: ${avgSpeed.toFixed(2)} MB/s, 总流量: ${this.formatBytes(this.totalDownloaded)}`);
